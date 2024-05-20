@@ -35,6 +35,7 @@ tam1 <- as.Date(paste0(year(Sys.Date())-1, "-", format(Sys.Date() %m-% months(12
 tam2 <- as.Date(paste0(year(Sys.Date())-2, "-", format(Sys.Date() %m-% months(12), "%m"),"-01"))
 
 mes_texto <- gsub("\\.","",str_to_title(format(mes, "%b")))
+mes_texto_completo <- paste0(str_to_title(format(mes, "%B"))," ",year(mes))
 mes_texto0 <- gsub("\\.","",str_to_title(format(trim, "%b")))
 
 year_extract <- format(mes,"%y")
@@ -60,7 +61,7 @@ d2 <- fread(paste0(path_input,"RX_IPCSK9_SWFROM 2305_2404.csv"))
 names(d) <- tolower(names(d))
 names(d2) <- tolower(names(d2))
 
-temp <- rstudioapi::showQuestion("IPCSK9",paste0("IPCSK9 Mes a ejecutar: ", mes_texto))
+temp <- rstudioapi::showQuestion("IPCSK9",paste0("IPCSK9 Mes a ejecutar: ", mes_texto_completo))
 
 
 
