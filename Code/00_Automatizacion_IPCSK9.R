@@ -4,56 +4,63 @@ gc()
 cat("\014")
 options(scipen=999)
 
+
+## PARAMETROS USUARIO EXTERNO ####
+user = "YesikaDíazRodriguez"
+path <- paste0("C:/Users/",user,"/Telomera S.L/AUTOMATIZACION MERCADOS - General/IPCSK9/")
+
+
+
+### PAQUETES DE R ####
+
 package <- function(x){
   if(!(require(x, character.only=TRUE))){
     install.packages(paste(x))}
   require(x, character.only = T)
   
 }
-## PAQUETES de R ####
 
-
-library(dplyr)
-library(reshape2)
-package("lubridate")
 package("data.table")
-package("openxlsx")
-package("stringr")
+package("lubridate")    ## para restar meses cómodamente
+package("stringr")      ## para poder poner los formatos de meses correspondientes
+package("rstudioapi")   ## showPrompt
 
 
 ## PARAMETROS ####
-
-user = "YesikaDíazRodriguez"
-
-
-
 mes <- as.Date(paste0(year(Sys.Date()), "-", format(Sys.Date() %m-% months(1), "%m"),"-01"))
-mes_texto <- gsub("\\.","",str_to_title(format(mes, "%b")))
 mes_actual <- as.Date(paste0(year(Sys.Date()), "-", format(Sys.Date(), "%m"),"-01"))
 
 trim <- as.Date(paste0(year(Sys.Date()), "-", format(Sys.Date() %m-% months(3), "%m"),"-01"))
 tam1 <- as.Date(paste0(year(Sys.Date())-1, "-", format(Sys.Date() %m-% months(12), "%m"),"-01"))
 tam2 <- as.Date(paste0(year(Sys.Date())-2, "-", format(Sys.Date() %m-% months(12), "%m"),"-01"))
 
+mes_texto <- gsub("\\.","",str_to_title(format(mes, "%b")))
+mes_texto0 <- gsub("\\.","",str_to_title(format(trim, "%b")))
+
+year_extract <- format(mes,"%y")
 
 ## RUTAS ####
-path <- paste0("C:/Users/",user,"/Telomera S.L/AUTOMATIZACION MERCADOS - General/IPCSK9/")
-output <- paste0(path, "output")
-input <- paste0(path, "input")
+path_input <- paste0(path,"input/",format(mes,"%Y%m"),"/")
+list.files(path_input)
 
 
+## creamos la carpeta en caso de que no exista
 
+path_output <- paste0(path,"output/",format(mes,"%Y%m"),"/")
+ifelse(!dir.exists(path_output), dir.create(path_output), F)
 
 ## Leemos el fichero ####
-list.files(input)
+# list.files(input)
 
-d_raw <- fread("Data/RX_IPCSK9 2305_2404.csv")
-d <- fread("Data/RX_IPCSK9 2305_2404.csv")
-d2_raw <- fread("Data/RX_IPCSK9_SWFROM 2305_2404.csv")
-d2 <- fread("Data/RX_IPCSK9_SWFROM 2305_2404.csv")
+
+d <- fread(paste0(path_input,"RX_IPCSK9 2305_2404.csv"))
+
+d2 <- fread(paste0(path_input,"RX_IPCSK9_SWFROM 2305_2404.csv"))
 
 names(d) <- tolower(names(d))
 names(d2) <- tolower(names(d2))
+
+temp <- rstudioapi::showQuestion("IPCSK9",paste0("IPCSK9 Mes a ejecutar: ", mes_texto))
 
 
 
@@ -69,6 +76,8 @@ d[, con_date := as.Date(as.character(con_date), "%d/%m/%Y")]
 d[, con_date_end := as.Date(as.character(con_date_end), "%d/%m/%Y")]
 
 if(d[is.na(con_date),.N] > 0){warning(paste0("Tenemos ",d[is.na(con_date),.N]," registros sin fecha 'con_date'"))}
+max(d$con_date)
+if(format(max(d$con_date),"%b") != format(mes_actual-1,"%b")) stop("Los datos no corresponden con el mes indicado.")
 
 
 # d_raw[TAM == "TAMAbr24", uniqueN(pat_id) ]
@@ -108,16 +117,16 @@ d[, abandono := as.Date(paste0("01-", abandono), format = "%d-%m-%y")]
 d[abandono != "",.N, abandono]
 summary(d$abandono)
 
-aban0 <- d[con_date >= trim & con_date < mes_actual & abandono >= trim & abandono < mes_actual]  ## abandono trim
-aban0[, `:=` (status = "ABANDONO", tam = "TRIM")]
+aban0 <- d[abandono >= trim & abandono < mes_actual]  ## abandono trim
+aban0[, `:=` (con_date = as.Date("1999-01-01"), status = "ABANDONO", tam = "TRIM")]
 
-aban1 <- d[con_date >= tam1 & con_date < mes_actual & abandono >= tam1 & abandono < mes_actual]  ## abandono TAM1
+aban1 <- d[abandono >= tam1 & abandono < mes_actual]  ## abandono TAM1
 summary(aban1$abandono)
-aban1[, `:=` (status = "ABANDONO", tam = paste0("TAM",mes_texto,format(mes_actual,"%y")))]
+aban1[, `:=` (con_date = as.Date("1999-01-01"), status = "ABANDONO", tam = paste0("TAM",mes_texto,format(mes_actual,"%y")))]
 
-aban2 <- d[con_date >= tam2 & con_date < tam1 & abandono >= tam2 & abandono < tam1]  ## abandono TAM2
+aban2 <- d[abandono >= tam2 & abandono < tam1]  ## abandono TAM2
 summary(aban2$abandono)
-aban2[, `:=` (status = "ABANDONO", tam = paste0("TAM",mes_texto,format(tam1,"%y")))]
+aban2[, `:=` (con_date = as.Date("1999-01-01"), status = "ABANDONO", tam = paste0("TAM",mes_texto,format(tam1,"%y")))]
 
 d <- rbind(d, aban0, aban1, aban2)
 
@@ -167,7 +176,9 @@ d_tam1[, tam := paste0("TAM",mes_texto,format(mes_actual,"%y"))]
 d_tam2 <- d[(con_date >= tam2 & con_date < tam1), ]
 d_tam2[, tam := paste0("TAM",mes_texto,format(tam1,"%y"))]
 
-d <- rbind(d_trim, d_tam1, d_tam2)
+d_abandonos <- d[status == "ABANDONO"]
+
+d <- rbind(d_trim, d_tam1, d_tam2, d_abandonos)
 
 
 
@@ -196,7 +207,12 @@ txt <- expand.grid(a,b,c, e)
 
 ## SIN TOTALES
 for (i in 1:nrow(txt)){
-  txt[i,5] <- d[esp == txt[i,1] & status == txt[i,2] & recod_prd == txt[i,3] & tam == txt[i,4], uniqueN(pat_id)]
+  if(txt[i,2] == "ABANDONO"){
+    txt[i,5] <- d[esp == txt[i,1] & status == txt[i,2] & recod_prd == txt[i,3] & tam == txt[i,4], uniqueN(pat_id)]
+  }
+  if(txt[i,2] != "ABANDONO"){
+    txt[i,5] <- d[esp == txt[i,1] & status == txt[i,2] & recod_prd == txt[i,3] & tam == txt[i,4] & status != "ABANDONO", uniqueN(pat_id)]
+  }
 }
 
 
@@ -204,21 +220,31 @@ for (i in 1:nrow(txt)){
 ### TOTAL Primera variable
 txt1 <- expand.grid("TOTAL ESP",b,c, e)
 for (i in 1:nrow(txt1)){
-  txt1[i,5] <- d[status == txt1[i,2] & recod_prd == txt1[i,3] & tam == txt1[i,4], uniqueN(pat_id)]
+  if(txt1[i,2] == "ABANDONO"){
+    txt1[i,5] <- d[status == txt1[i,2] & recod_prd == txt1[i,3] & tam == txt1[i,4], uniqueN(pat_id)]
+  }
+  if(txt1[i,2] != "ABANDONO"){
+    txt1[i,5] <- d[status == txt1[i,2] & recod_prd == txt1[i,3] & tam == txt1[i,4] & status != "ABANDONO", uniqueN(pat_id)]
+  }
 }
 
 ### TOTAL Segunda variable
 txt2 <- expand.grid(a,"Total Patients",c, e)
 for (i in 1:nrow(txt2)){
-  txt2[i,5] <- d[esp == txt2[i,1] & recod_prd == txt2[i,3] & tam == txt2[i,4], uniqueN(pat_id)]
+  txt2[i,5] <- d[esp == txt2[i,1] & recod_prd == txt2[i,3] & tam == txt2[i,4] & !status %in% c("ABANDONO", "SWITCHES FROM"), uniqueN(pat_id)]
 }
 
 ### TOTAL Tercera variable
 txt3 <- expand.grid(a,b, "TOTAL", e)
 for (i in 1:nrow(txt3)){
+  # i=1
+  if(txt3[i,2] == "ABANDONO"){
   txt3[i,5] <- d[esp == txt3[i,1] & status == txt3[i,2] & tam == txt3[i,4] , uniqueN(pat_id)]
+  }
+  if(txt3[i,2] != "ABANDONO"){
+  txt3[i,5] <- d[esp == txt3[i,1] & status == txt3[i,2] & tam == txt3[i,4] & status != "ABANDONO" , uniqueN(pat_id)]
+  }
 }
-
 
 
 
@@ -226,19 +252,24 @@ for (i in 1:nrow(txt3)){
 ### TOTAL Primera y Segunda variable
 txt12 <- expand.grid("TOTAL ESP","Total Patients", c, e)
 for (i in 1:nrow(txt12)){
-  txt12[i,5] <- d[recod_prd == txt12[i,3] & tam == txt12[i,4] , uniqueN(pat_id)]
+  txt12[i,5] <- d[recod_prd == txt12[i,3] & tam == txt12[i,4] & !status %in% c("ABANDONO", "SWITCHES FROM"), uniqueN(pat_id)]
 }
 
 ### TOTAL Primera y Tercera variable
 txt13 <- expand.grid("TOTAL ESP",b, "TOTAL", e)
 for (i in 1:nrow(txt13)){
-  txt13[i,5] <- d[status == txt13[i,2] & tam == txt13[i,4], uniqueN(pat_id)]
+  if(txt13[i,2] == "ABANDONO"){
+    txt13[i,5] <- d[status == txt13[i,2] & tam == txt13[i,4], uniqueN(pat_id)]
+  }
+  if(txt13[i,2] != "ABANDONO"){
+    txt13[i,5] <- d[status == txt13[i,2] & tam == txt13[i,4] & status != "ABANDONO", uniqueN(pat_id)]
+  }
 }
 
 ### TOTAL Segunda y Tercera variable
 txt23 <- expand.grid(a,"Total Patients", "TOTAL", e)
 for (i in 1:nrow(txt23)){
-  txt23[i,5] <- d[esp == txt23[i,1] & tam == txt23[i,4] , uniqueN(pat_id)]
+  txt23[i,5] <- d[esp == txt23[i,1] & tam == txt23[i,4] & !status %in% c("ABANDONO", "SWITCHES FROM"), uniqueN(pat_id)]
 }
 
 
@@ -248,14 +279,13 @@ for (i in 1:nrow(txt23)){
 
 txt123 <- expand.grid("TOTAL ESP","Total Patients", "TOTAL", e)
 for (i in 1:nrow(txt123)){
-  txt123[i,5] <- d[tam == txt123[i,4], uniqueN(pat_id)]
+  txt123[i,5] <- d[tam == txt123[i,4] & !status %in% c("ABANDONO", "SWITCHES FROM"), uniqueN(pat_id)]
 }
-names(txt)
 
 
-
-### JUNtamOS LOS RESULTADOS ####
+### Juntamos LOS RESULTADOS ####
 total_txt <- setDT(Reduce(function(...) rbind(..., fill = T), mget(ls(pattern = "^txt"))))
+
 ## quitamos unas filas de NA que se generan y los registros que tienen 0
 total_txt <- total_txt[!is.na(Var1) & V5 > 0,]
 
@@ -273,50 +303,26 @@ names(total_txt) <- c("Var2", "Var3", "Var4", "Var1", "Contador_r")
 # diferencias[V5rbind != V5reduce]
 
 total_txt[Var1 == "TRIM", Var1 := "Feb-Abr24"]
+total_txt[Var1 == "TRIM", Var1 := paste0(mes_texto0,"-",mes_texto,year_extract)]
 
 total_txt <- total_txt[Var3 != "REPETICION"]
 
-
-out_previo <- setDT(read.xlsx("out/out_abril24.xlsx", "Hoja1"))
-
-out_previo[, c("X7", "X8", "X9") := NULL]
-
-diferencias <- setDT(merge(total_txt, out_previo, by = c("Var1", "Var2", "Var3", "Var4"), all = T))
+total_txt[, Concatenado := paste0(Var2, Var3, Var4, Var1)]
+total_txt <- total_txt[,.(Concatenado, Var2,Var3,Var4,Var1, Contador_r)]
 
 
-dif <- diferencias[Contador_r != Contador | is.na(Contador_r) | is.na(Contador)]
-igual <- diferencias[Contador_r == Contador]
+fwrite(total_txt, paste0(path_output,"IPCSK9_",format(mes,"%Y%m"),".csv"))
 
-# dif[,.N, Var1]
-# dif[,.N, Var2]
-# dif[,.N, Var3]
-# dif[,.N, Var4]
+
+
+
+## comprobacions 202404
+# out_previo <- setDT(read.xlsx("out/out_abril24.xlsx", "Hoja1"))
 # 
-# igual[,.N, Var1]
-# igual[,.N, Var2]
-# igual[,.N, Var3]
-# igual[,.N, Var4]
+# out_previo[, c("X7", "X8", "X9") := NULL]
+# 
+# diferencias <- setDT(merge(total_txt, out_previo, by = c("Concatenado","Var1", "Var2", "Var3", "Var4"), all = T))
+# 
+# dif <- diferencias[Contador_r != Contador | is.na(Contador_r) | is.na(Contador)]
+# igual <- diferencias[Contador_r == Contador]
 
-#    Var1      Var2           Var3         Var4     Contador_r                             Concatenado Contador
-# TAMAbr24 TOTAL ESP Total Patients        TOTAL        735        TOTAL ESPTotal PatientsTOTALTAMAbr24      714
-
-# d[tam == "TAMAbr24", uniqueN(pat_id)]
-# d[con_date >= tam1 & con_date < mes_actual, uniqueN(pat_id)]
-
-# Feb-Abr24       CAR       DYNAMIC     PRALUENT        125               CARDYNAMICPRALUENTFeb-Abr24       13
-
-d[tam == "TRIM" & esp == "CAR" & recod_prd == "PRALUENT", uniqueN(pat_id), status]
-
-
-
-# Feb-Abr24       CAR  SWITCHES FROM     PRALUENT          2          CARSWITCHES FROMPRALUENTFeb-Abr24        3
-
-
-
-# d2[pat_id %in% c("308526", "438805", "134702342")]
-# d[pat_id %in% c("308526", "438805", "134702342") & status == "SWITCHES FROM" & tam == "TRIM",.N, pat_id]
-
-# 25:  TAMAbr23       END       ABANDONO PRALUENT 150          2              ENDABANDONOPRALUENT 150TAMAbr23        1
-d[tam == "TRIM" & esp == "END" & recod_prd == "PRALUENT 150" & status == "ABANDONO",]
-
-names(d)
