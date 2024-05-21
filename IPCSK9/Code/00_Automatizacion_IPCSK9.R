@@ -122,6 +122,7 @@ aban0 <- d[abandono >= trim & abandono < mes_actual]  ## abandono trim
 aban0[, `:=` (con_date = as.Date("1999-01-01"), status = "ABANDONO", tam = "TRIM")]
 
 aban1 <- d[abandono >= tam1 & abandono < mes_actual]  ## abandono TAM1
+aban1[,.N, esp]
 summary(aban1$abandono)
 aban1[, `:=` (con_date = as.Date("1999-01-01"), status = "ABANDONO", tam = paste0("TAM",mes_texto,format(mes_actual,"%y")))]
 
@@ -311,19 +312,20 @@ total_txt <- total_txt[Var3 != "REPETICION"]
 total_txt[, Concatenado := paste0(Var2, Var3, Var4, Var1)]
 total_txt <- total_txt[,.(Concatenado, Var2,Var3,Var4,Var1, Contador_r)]
 
-
-fwrite(total_txt, paste0(path_output,"IPCSK9_",format(mes,"%Y%m"),".csv"))
-
-
-
-
-## comprobacions 202404
-# out_previo <- setDT(read.xlsx("out/out_abril24.xlsx", "Hoja1"))
-# 
+{
+# ## comprobacions 202404
+# require(openxlsx)
+# out_previo <- setDT(read.xlsx("IPCSK9/out/out_abril24.xlsx", "Hoja1"))
+# out_previo2 <- setDT(read.xlsx("IPCSK9/Data/Libro1.xlsx", "Hoja1"))  ## output arreglado los abandonos
 # out_previo[, c("X7", "X8", "X9") := NULL]
 # 
-# diferencias <- setDT(merge(total_txt, out_previo, by = c("Concatenado","Var1", "Var2", "Var3", "Var4"), all = T))
+# names(out_previo2) <- names(out_previo)
+# 
+# diferencias <- setDT(merge(total_txt, out_previo2, by = c("Concatenado","Var1", "Var2", "Var3", "Var4"), all = T))
 # 
 # dif <- diferencias[Contador_r != Contador | is.na(Contador_r) | is.na(Contador)]
 # igual <- diferencias[Contador_r == Contador]
+}
 
+## Exportamos los resultados del periodo ####
+fwrite(total_txt, paste0(path_output,"IPCSK9_",format(mes,"%Y%m"),".csv"))
