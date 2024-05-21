@@ -1,5 +1,4 @@
 rm(list= ls())
-# dev.off()
 gc()
 cat("\014")
 options(scipen=999)
