@@ -50,15 +50,17 @@ path_output <- paste0(path,"output/",format(mes,"%Y%m"),"/")
 ifelse(!dir.exists(path_output), dir.create(path_output), F)
 
 ## Leemos el fichero ####
-# list.files(input)
+# list.files(path_input)
 
 
-d <- fread(paste0(path_input,"RX_IPCSK9 2305_2404.csv"))
+d <- fread(paste0(path_input,"RX_Mayo24.csv"))
 
-d2 <- fread(paste0(path_input,"RX_IPCSK9_SWFROM 2305_2404.csv"))
+d2 <- fread(paste0(path_input,"RX_Mayo24_SWITCHES.csv"))
 
 names(d) <- tolower(names(d))
 names(d2) <- tolower(names(d2))
+
+setnames(d2, "mol_name-", "recod_prd-")
 
 temp <- rstudioapi::showQuestion("IPCSK9",paste0("IPCSK9 Mes a ejecutar: ", mes_texto_completo))
 
@@ -97,7 +99,10 @@ if(format(max(d$con_date),"%b") != format(mes_actual-1,"%b")) stop("Los datos no
 
 ## ABANDONO ####
 
-{
+if(min(as.numeric(d$abandono), na.rm = T) != "Inf"){
+  d[, abandono := as.numeric(abandono)]
+  d[, abandono := as.Date(abandono, origin = "1899-12-30")]
+} else{
   d[, abandono := gsub("ene", "01", abandono)]
   d[, abandono := gsub("feb", "02", abandono)]
   d[, abandono := gsub("mar", "03", abandono)]
@@ -110,10 +115,9 @@ if(format(max(d$con_date),"%b") != format(mes_actual-1,"%b")) stop("Los datos no
   d[, abandono := gsub("oct", "10", abandono)]
   d[, abandono := gsub("nov", "11", abandono)]
   d[, abandono := gsub("dic", "12", abandono)]
+  d[, abandono := as.Date(paste0("01-", abandono), format = "%d-%m-%y")]
 }
 
-
-d[, abandono := as.Date(paste0("01-", abandono), format = "%d-%m-%y")]
 d[abandono != "",.N, abandono]
 summary(d$abandono)
 
@@ -164,16 +168,12 @@ d[,.N, status]
 ##### ESCENARIOS POR TAM Y MES ACTUAL
 ## los TAM ya estan calculados, ahora hacer el TRIM
 
-# d_trim <- d[(con_date >= trim & con_date < mes_actual) | abandono >= trim & abandono < mes_actual,]
 d_trim <- d[(con_date >= trim & con_date < mes_actual),]
 d_trim[, tam :=  "TRIM"]
 
-
-# d_tam1 <- d[(con_date >= tam1 & con_date < mes_actual) | (abandono >= tam1 & abandono < mes_actual), ]
 d_tam1 <- d[(con_date >= tam1 & con_date < mes_actual), ]
 d_tam1[, tam := paste0("TAM",mes_texto,format(mes_actual,"%y"))]
 
-# d_tam2 <- d[(con_date >= tam2 & con_date < tam1) | (abandono >= tam2 & abandono < tam1), ]
 d_tam2 <- d[(con_date >= tam2 & con_date < tam1), ]
 d_tam2[, tam := paste0("TAM",mes_texto,format(tam1,"%y"))]
 
@@ -303,7 +303,7 @@ names(total_txt) <- c("Var2", "Var3", "Var4", "Var1", "Contador_r")
 # diferencias[is.na(V5rbind)]
 # diferencias[V5rbind != V5reduce]
 
-total_txt[Var1 == "TRIM", Var1 := "Feb-Abr24"]
+# total_txt[Var1 == "TRIM", Var1 := "Feb-Abr24"]
 total_txt[Var1 == "TRIM", Var1 := paste0(mes_texto0,"-",mes_texto,year_extract)]
 
 total_txt <- total_txt[Var3 != "REPETICION"]
