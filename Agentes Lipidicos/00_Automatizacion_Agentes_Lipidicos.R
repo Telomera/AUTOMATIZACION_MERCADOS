@@ -21,30 +21,26 @@ package("openxlsx")     ## para leer el excel
 
 
 
-
-
 ## PARAMETROS ####
-path <- "../Agentes lipidicos/input/"
+path <- "../Agentes lipidicos/"
 
-aux <- as.Date("2024-05-15")
-# aux <- Sys.Date()
+mes <- as.Date(paste0(year(Sys.Date()), "-", format(Sys.Date() %m-% months(1), "%m"),"-01"))
+mes_actual <- as.Date(paste0(year(Sys.Date()), "-", format(Sys.Date(), "%m"),"-01"))
 
-mes <- as.Date(paste0(year(aux), "-", format(aux %m-% months(1), "%m"),"-01"))
-mes_actual <- as.Date(paste0(year(aux), "-", format(aux, "%m"),"-01"))
-
-trim <- as.Date(paste0(year(aux), "-", format(aux %m-% months(3), "%m"),"-01"))
-tam1 <- as.Date(paste0(year(aux)-1, "-", format(aux %m-% months(12), "%m"),"-01"))
-tam2 <- as.Date(paste0(year(aux)-2, "-", format(aux %m-% months(12), "%m"),"-01"))
+trim <- as.Date(paste0(year(Sys.Date()), "-", format(Sys.Date() %m-% months(3), "%m"),"-01"))
+tam1 <- as.Date(paste0(year(Sys.Date())-1, "-", format(Sys.Date() %m-% months(12), "%m"),"-01"))
+tam2 <- as.Date(paste0(year(Sys.Date())-2, "-", format(Sys.Date() %m-% months(12), "%m"),"-01"))
 
 mes_texto <- gsub("\\.","",str_to_title(format(mes, "%b")))
 mes_texto_completo <- paste0(str_to_title(format(mes, "%B"))," ",year(mes))
 mes_texto0 <- gsub("\\.","",str_to_title(format(trim, "%b")))
 
 year_extract <- format(mes,"%y")
+year_extract_long <- year(mes)
 
 ## RUTAS ####
 path_input <- paste0(path,"Input/",format(mes,"%Y%m"),"/")
-# path_input <- "C:/Users/YesikaDíazRodriguez/Telomera S.L/AUTOMATIZACION MERCADOS - General/Agentes lipidicos/Input/202404/"
+
 file_mercado <- list.files(path_input)[grepl(".xlsx",list.files(path_input))]
 
 if(length(file_mercado) != 1) stop("Revisar los documentos de entrada. Deberían haber solo 1 documento")
@@ -80,7 +76,20 @@ names(d2) <- tolower(names(d2))
 
 d2_raw <- copy(d2)
 
-# temp <- rstudioapi::showQuestion("AGENTES LIPIDICOS",paste0("Agentes Lipídicos. Mes a ejecutar: ", mes_texto_completo))
+
+if(sum(c("pat_id","esp" , "con_date",  "class", "recod_prd_name", "status", "abandono") %in% names(d)) != 7) {
+  stop(paste0("Revisar los nombres del archivo, pestaña: ",nombres_hojas[grepl("tx|switches", ignore.case = T, nombres_hojas)],"\n 
+              deberían ser: pat_id, esp, con_date,  class, recod_prd_name,  status, abandono"))
+}
+
+
+if(sum(c("pat_id", "esp" , "con_date","recod_prd_name-" , "class-", "segmento.final") %in% names(d2)) != 6) {
+  stop(paste0("Revisar los nombres del archivo, pestaña: ",nombres_hojas[grepl("tx|switches", ignore.case = T, nombres_hojas)],"\n 
+              deberían ser: pat_id,esp , con_date, recod_prd_name- , class-, segmento final"))
+}
+
+
+temp <- rstudioapi::showQuestion("AGENTES LIPIDICOS",paste0("Agentes Lipídicos. Mes a ejecutar: ", mes_texto_completo))
 
 
 
@@ -158,8 +167,6 @@ d <- rbind(d_last, d_last_dinamic, aban0, aban1, aban2, fill = T)
 # ## MOLECULA ####
 
 d[,.N, .(class, recod_prd_name)]
-
-d[, mol_complex := paste0(class,"-", recod_prd_name)]
 
 d_mas <- copy(d)
 d_prd <- copy(d)
@@ -242,9 +249,10 @@ txt <- expand.grid(a,b,c, e,f)
 ## para poder filtrar los ultimos registros
 dfiltr <- d[is.na(ig)]
 
-
-
-
+dfiltr_last1 <- d[order(pat_id, tam, -con_date) & status != "ABANDONOS"]
+dfiltr_last1 <- dfiltr_last1[, orden := rleid(con_date), .(pat_id, tam)][orden == 1,]
+dfiltr_last2 <- d[order(pat_id, -con_date) & status == "ABANDONOS"]
+dfiltr_last <- rbind(dfiltr_last1, dfiltr_last2)
 
 # dfiltr <- dfiltr[valores == 1,]
 
@@ -280,10 +288,16 @@ for (i in 1:nrow(txt1)){
 ### TOTAL Segunda variable
 txt2 <- expand.grid(a,"Total Patients",c, e, f)
 for (i in 1:nrow(txt2)){
-  txt2[i,6] <- dfiltr[esp == txt2[i,1] & recod_prd_name == txt2[i,3] & tam == txt2[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & segmento_final == txt2[i,5], uniqueN(pat_id)]
+  txt2[i,6] <- dfiltr_last[esp == txt2[i,1] & recod_prd_name == txt2[i,3] & tam == txt2[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & segmento_final == txt2[i,5], uniqueN(pat_id)]
 }
 
-
+# txt2_v <- expand.grid(a,"Total Patients",c, e, f)
+# for (i in 1:nrow(txt2_v)){
+#   txt2_v[i,6] <- dfiltr_last[esp == txt2_v[i,1] & recod_prd_name == txt2_v[i,3] & tam == txt2_v[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & segmento_final == txt2_v[i,5], uniqueN(pat_id)]
+# }
+# 
+# txt_c <- merge(txt2, txt2_v, by = c("Var1", "Var2", "Var3", "Var4", "Var5"), all = T)
+# txt_c <- merge(txt_c, diferencias2, by = c("Var1", "Var2", "Var3", "Var4", "Var5"), all.x = T)
 
 ### TOTAL Tercera variable
 txt3 <- expand.grid(a,b, "TOTAL", e, f)
@@ -312,18 +326,11 @@ for (i in 1:nrow(txt4)){
 
 
 
-
-
-
-
-
-
-
 ### TOTALES POR PAREJAS ####
 ### TOTAL Primera y Segunda variable
 txt12 <- expand.grid("TOTAL ESP","Total Patients", c, e, f)
 for (i in 1:nrow(txt12)){
-  txt12[i,6] <- dfiltr[recod_prd_name == txt12[i,3] & tam == txt12[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & segmento_final == txt12[i,5], uniqueN(pat_id)]
+  txt12[i,6] <- dfiltr_last[recod_prd_name == txt12[i,3] & tam == txt12[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & segmento_final == txt12[i,5], uniqueN(pat_id)]
 }
 
 # # dfiltr[recod_prd_name == "NUSTENDI" & tam == "TRIM" & segmento_final == "HF"& !status %in% c("ABANDONOS", "SWITCHES FROM"), uniqueN(pat_id)]
@@ -356,14 +363,14 @@ for (i in 1:nrow(txt14)){
 ### TOTAL Segunda y Tercera variable
 txt23 <- expand.grid(a,"Total Patients", "TOTAL", e, f)
 for (i in 1:nrow(txt23)){
-  txt23[i,6] <- dfiltr[esp == txt23[i,1] & tam == txt23[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & segmento_final == txt23[i,5], uniqueN(pat_id)]
+  txt23[i,6] <- dfiltr_last[esp == txt23[i,1] & tam == txt23[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & segmento_final == txt23[i,5], uniqueN(pat_id)]
 }
 
 
 ### TOTAL Segunda y cuarta variable
 txt24 <- expand.grid(a,"Total Patients", c, e, "Total indicaciones")
 for (i in 1:nrow(txt24)){
-    txt24[i,6] <- dfiltr[esp == txt24[i,1] & recod_prd_name == txt24[i,3] & tam == txt24[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM"), uniqueN(pat_id)]
+    txt24[i,6] <- dfiltr_last[esp == txt24[i,1] & recod_prd_name == txt24[i,3] & tam == txt24[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM"), uniqueN(pat_id)]
 }
 
 ### TOTAL Tercera y cuarta variable
@@ -391,20 +398,20 @@ for (i in 1:nrow(txt34)){
 
 txt123 <- expand.grid("TOTAL ESP","Total Patients", "TOTAL", e, f)
 for (i in 1:nrow(txt123)){
-  txt123[i,6] <- dfiltr[tam == txt123[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & segmento_final == txt123[i,5], uniqueN(pat_id)]
+  txt123[i,6] <- dfiltr_last[tam == txt123[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & segmento_final == txt123[i,5], uniqueN(pat_id)]
 }
 
 
 txt234 <- expand.grid(a,"Total Patients", "TOTAL", e, "Total indicaciones")
 for (i in 1:nrow(txt234)){
-  txt234[i,6] <- dfiltr[tam == txt234[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & esp == txt234[i,1], uniqueN(pat_id)]
+  txt234[i,6] <- dfiltr_last[tam == txt234[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & esp == txt234[i,1], uniqueN(pat_id)]
 }
 
 
 txt124 <- expand.grid("TOTAL ESP","Total Patients", c, e, "Total indicaciones")
 for (i in 1:nrow(txt124)){
   # i=1
-  txt124[i,6] <- dfiltr[tam == txt124[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & recod_prd_name == txt124[i,3], uniqueN(pat_id)]
+  txt124[i,6] <- dfiltr_last[tam == txt124[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & recod_prd_name == txt124[i,3], uniqueN(pat_id)]
 }
 
 txt134 <- expand.grid("TOTAL ESP", b, "TOTAL", e, "Total indicaciones")
@@ -426,7 +433,7 @@ for (i in 1:nrow(txt134)){
 
 txt1234 <- expand.grid("TOTAL ESP","Total Patients", "TOTAL", e, "Total indicaciones")
 for (i in 1:nrow(txt1234)){
-  txt1234[i,6] <- dfiltr[tam == txt1234[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM"), uniqueN(pat_id)]
+  txt1234[i,6] <- dfiltr_last[tam == txt1234[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM"), uniqueN(pat_id)]
 }
 
 
@@ -434,38 +441,32 @@ for (i in 1:nrow(txt1234)){
 
 ### Juntamos LOS RESULTADOS ####
 total_txt <- setDT(Reduce(function(...) rbind(..., fill = T), mget(ls(pattern = "^txt"))))
-total_txt2 <-  setDT(rbind(txt2, txt12, txt23, txt24, txt123, txt124, txt234, txt1234, fill = T))
 
 ## quitamos unas filas de NA que se generan y los registros que tienen 0
 total_txt <- total_txt[!is.na(Var1) & V6 > 0,]
-total_txt2 <- total_txt2[!is.na(Var1) & V6 > 0,]
+
 
 total_txt[,.N, Var4]
 
 names(total_txt) <- c("Var3", "Var4", "Var5", "Var1", "Var2","Contador_r")
-names(total_txt2) <- c("Var3", "Var4", "Var5", "Var1", "Var2","Contador_r")
 
-## comprobacion
-# total_txt2 <- rbind(txt, txt1, txt2, txt3, txt13,txt23, txt12, txt123)
-# total_txt
-# 
-# 
-# diferencias <- setDT(merge(total_txt, total_txt2, by = c("Var1", "Var2", "Var3", "Var4"), suffixes = c("reduce", "rbind"), all = T))
-# diferencias[is.na(V5rbind)]
-# diferencias[V5rbind != V5reduce]
-
-# total_txt[Var1 == "TRIM", Var1 := "Feb-Abr24"]
-total_txt[Var1 == "TRIM", Var1 := paste0(mes_texto0,"-",mes_texto,year_extract)]
-
-total_txt2[Var1 == "TRIM", Var1 := paste0(mes_texto0,"-",mes_texto,year_extract)]
+{
+if(mes_texto %in% c("Mar"))  total_txt[Var1 == "TRIM", Var1 := paste0("Q1 ",year_extract_long)]
+if(mes_texto %in% c("Jun"))  total_txt[Var1 == "TRIM", Var1 := paste0("Q2 ",year_extract_long)]
+if(mes_texto %in% c("Sep"))  total_txt[Var1 == "TRIM", Var1 := paste0("Q3 ",year_extract_long)]
+if(mes_texto %in% c("Dic"))  total_txt[Var1 == "TRIM", Var1 := paste0("Q4 ",year_extract_long)]
+if(!mes_texto %in% c("Mar","Jun","Sep","Dic")) total_txt[Var1 == "TRIM", Var1 := paste0(mes_texto0,"-",mes_texto,year_extract)]
+}
 
 total_txt <- total_txt[!grepl("^REPETICION",Var4)]
-total_txt2 <- total_txt2[!grepl("^REPETICION",Var4)]
-
 total_txt[, Concatenado := paste0(Var3,Var4,Var2,Var5,Var1)]
-total_txt2[, Concatenado := paste0(Var3,Var4,Var2,Var5,Var1)]
+
 total_txt <- total_txt[,.(Concatenado, Var1,Var2,Var3,Var4,Var5, Contador_r)]
-total_txt2 <- total_txt2[,.(Concatenado, Var1,Var2,Var3,Var4,Var5, Contador_r)]
+
+
+
+
+
 
 {
 # ## comprobacions 202404
@@ -473,172 +474,37 @@ total_txt2 <- total_txt2[,.(Concatenado, Var1,Var2,Var3,Var4,Var5, Contador_r)]
 out_previo <- setDT(read.xlsx(paste0(path_input,file_mercado), 
                               sheet = "Resultados", 
                               detectDates = T))
+# setnames(out_previo, "Var3Var4Var2Var5Var1", "Concatenado")
+setnames(out_previo, "VALOR", "Contador")
+total_txt[,.N, Var1]
+out_previo[,.N, Var1]
 
+total_txt[,Var4 := toupper(Var4)]
+total_txt[,Concatenado := toupper(Concatenado)]
+out_previo[,Concatenado := toupper(Concatenado)]
+out_previo[,Var4 := toupper(Var4)]
 
-diferencias <- setDT(merge(total_txt, out_previo, by = c("Concatenado","Var1", "Var2", "Var3", "Var4", "Var5"), all = T))
-diferencias2 <- setDT(merge(total_txt2, out_previo, by = c("Concatenado","Var1", "Var2", "Var3", "Var4", "Var5"), all = T))
+diferencias <- setDT(merge(total_txt[Var1 != "TAMMar23"], 
+                           out_previo, 
+                           by = c("Concatenado","Var1", "Var2", "Var3", "Var4", "Var5"), all = T))
 diferencias[,.N, Var1]
-diferencias <- diferencias[Var1 %in% c("Feb-Abr24", "TAMAbr24")]
 diferencias <- diferencias[Var5 != "LEQVIO"]
-dif <- diferencias[Contador_r != VALOR | is.na(Contador_r) | is.na(VALOR)]
-igual <- diferencias[Contador_r == VALOR]
+dif <- diferencias[Contador_r != Contador | is.na(Contador_r) | is.na(Contador)]
+igual <- diferencias[Contador_r == Contador]
 
-dif[, magnitud := abs(VALOR-Contador_r)]
+dif[, magnitud := abs(Contador-Contador_r)]
+
 }
+
+
+
 
 
 out_previo[,.N, Var4]
 
 ## Exportamos los resultados del periodo ####
-# fwrite(total_txt, paste0(path_output,"Agentes_lipidicos_",format(mes,"%Y%m"),".csv"))
+write.xlsx(total_txt, paste0(path_output,"Agentes_lipidicos_",format(mes,"%Y%m"),".xlsx"))
+file_name <- paste0("Agentes_lipidicos_",format(mes,"%Y%m"),".xlsx")
+if(paste0("Agentes_lipidicos_",format(mes,"%Y%m"),".xlsx") %in% list.files(path_output)){cat("Se ha exportado correctamente el archivo:\n",file_name)}else{warning("Hay un problema con la exportación")}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-dif[Concatenado == "ENDTotal PatientsTotal indicacionesiPCSK9TAMAbr24",]
-# Concatenado                                               Var1          Var2        Var3        Var4     Var5     Contador_r VALOR magnitud
-# 1: ENDTotal PatientsTotal indicacionesiPCSK9TAMAbr24    TAMAbr24 Total indicaciones  END Total Patients iPCSK9        271     257       14
-
-dfiltr[tam == "TAMAbr24" & esp == "END" & recod_prd_name == "iPCSK9" & status != "ABANDONOS", uniqueN(pat_id)]
-
-
-vec1 <- c(3401,        7561,       9089,       10317,        12114,       13940,        23762,       26116,        31383,       34283,        34486,       
-          42413,        53276,       54252,        54351,       54447,        54675,       59105,        73812,       73915,        74660,       80857,        
-          82853,       84525,        86341,       96999,        103089,       103107,       103184,      103559,        104640,       120200,       123877,      
-          125212,        132391,       132774,       136260,      142631,        143609,       146808,       146989,      149914,        154101,       157378,       
-          157610,      160626,        162622,       163529,       166771,      169770,        173057,       176292,       176632,      183252,        184832,       
-          195764,       198968,      209675,        210853,       214606,       215211,      215561,        223376,       225506,       226637,      229936,        
-          230929,       235990,       249492,      253496,        254193,       257264,       257405,      263503,        264253,       265274,       269114,      
-          272132,        276332,       282156,       286582,      290751,        303195,       303298,       316357,      317636,        320048,       320557,       
-          321503,      324606,        325126,       326064,       327171,      327207,        327529,       335443,       341785,      347446,        348242,       
-          349058,       352114,      354802,        371549,       374329,       376655,      380108,        380921,       383401,       397612,      401296,        
-          402332,       402837,       404655,      405511,        413424,       422233,       428975,      430641,        438531,       440390,       440845,      
-          448638,        449177,       457877,       460657,      461088,        464780,       467548,       473538,      484277,        486337,       488123,       
-          492375,      492544,        493015,       493427,       499695,      511153,        511980,       513691,       513733,      514845,        521502,       
-          533303,       533417,      533467,        540715,       541802,       564964,      568201,        583935,       587598,       589699,      594236,        
-          597375,       604238,       610293,      610886,        646214,       652818,       653873,      656930,        661798,       662309,       662846,      
-          665133,        667477,       670758,       674221,      676523,        683816,       686736,       688716,      694693,        712385,       712425,       
-          716776,      718765,        720338,       728766,       730460,      736037,        737407,       739992,       741276,      750405,        757810,       
-          763611,       764414,      770817,        775297,       789050,       790093,      802619,        808481,       815212,       816529,      816603,        
-          816721,       819082,       820845,      830248,        830379,       832597,       833049,      833840,        836995,       846021,       848571,      
-          850998,        862511,       904128,       930749,      932491,        2011754,       91008353,      91008846,        91027411,       110267298,       
-          110395108,       116064813,       122218308,       122514193,       122632443,       123015942,       123183236,       127360290,       131811909,       
-          132205415,       137074752,       139159631,       139193391,       139195917,       139439353,       139495610,       139496260,       139524511,       
-          139880873,       140221423,       140518599,       142367730,       144788137,       152490333,       153546640,       162456135,       163703835,       
-          164347235,       170636035,       171647935,       173498736,       175918236,       188388038,       189308036,       190748037,       193823636,       
-          195681141,       198703942)
-
-setdiff(dfiltr[tam == "TAMAbr24" & esp == "END" & recod_prd_name == "iPCSK9" & status != "ABANDONOS",]$pat_id, vec1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# {
-# # > dif[Concatenado == "CARDynamicTotal indicacionesREPATHAMar-May24"]
-# # Concatenado      Var1               Var2 Var3    Var4    Var5                                      Contador_r Contador
-# # 1: CARDynamicTotal indicacionesREPATHAMar-May24 Mar-May24 Total indicaciones  CAR Dynamic REPATHA         11       10
-# 
-# d[tam == "TRIM" & esp == "CAR" & status == "DYNAMIC" & recod_prd_name == "REPATHA", ]
-# 
-# vec1 <- c(45058,
-#           254920,
-#           426916,
-#           467465,
-#           778559,
-#           832352,
-#           837396,
-#           915771,
-#           116723963,
-#           139713349)
-# 
-# setdiff(d[tam == "TRIM" & esp == "CAR" & status == "DYNAMIC" & recod_prd_name == "REPATHA", ]$pat_id, vec1)
-# }
-# 
-# 
-# {
-# dif[Concatenado == "ENDDynamicHFNUSTENDITAMMay24"]
-# Concatenado     Var1 Var2 Var3    Var4     Var5 Contador_r Contador
-# 1: ENDDynamicHFNUSTENDITAMMay24 TAMMay24   HF  END Dynamic NUSTENDI          8       11
-
-# vec1 <- c(18725,
-#           367314,
-#           436560,
-#           528117,
-#           548848,
-#           583935,
-#           687998,
-#           697958,
-#           698005,
-#           140096846,
-#           140518599)
-# 
-# 
-# 
-# dfiltr[tam == "TAMMay24" & esp == "END" & status == "DYNAMIC" & recod_prd_name == "NUSTENDI" & segmento_final == "HF", uniqueN(pat_id) ]
-# 
-# setdiff(vec1, 
-#         dfiltr[tam == "TAMMay24" & esp == "END" & status == "DYNAMIC" & recod_prd_name == "NUSTENDI" & segmento_final == "HF", ]$pat_id)
-# }
-
-
-
-# dif[Concatenado == "ENDDynamicHFREPATHATAMMay24"]
-# Concatenado     Var1 Var2 Var3    Var4    Var5 Contador_r Contador
-# 1: ENDDynamicHFREPATHATAMMay24 TAMMay24   HF  END Dynamic REPATHA         23       24
-
-# dfiltr[tam == "TAMMay24" & esp == "END" & status == "DYNAMIC" & recod_prd_name == "REPATHA" & segmento_final == "HF", uniqueN(pat_id) ]
-# 
-# 
-# vec1 <- c(7561,
-#           53276,
-#           120200,
-#           215211,
-#           223376,
-#           341785,
-#           376655,
-#           397612,
-#           401296,
-#           404655,
-#           438531,
-#           449177,
-#           465811,
-#           492375,
-#           528117,
-#           587598,
-#           652818,
-#           656930,
-#           718765,
-#           720338,
-#           802619,
-#           816529,
-#           833049,
-#           131811909)
-# setdiff(vec1, 
-#         dfiltr[tam == "TAMMay24" & esp == "END" & status == "DYNAMIC" & recod_prd_name == "REPATHA" & segmento_final == "HF", ]$pat_id)
 
