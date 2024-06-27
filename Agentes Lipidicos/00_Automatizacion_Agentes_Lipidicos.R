@@ -54,6 +54,7 @@ nombres_hojas <- nombres_hojas[!toupper(nombres_hojas) %in% "RESULTADOS"]
 path_output <- paste0(path,"Output/",format(mes,"%Y%m"),"/")
 ifelse(!dir.exists(path_output), dir.create(path_output), F)
 
+## <--------------------------->####
 ## Leemos el fichero ####
 
 d <- setDT(read.xlsx(paste0(path_input,file_mercado), 
@@ -249,14 +250,18 @@ txt <- expand.grid(a,b,c, e,f)
 ## para poder filtrar los ultimos registros
 dfiltr <- d[is.na(ig)]
 
+
+## Cada vez que seleccionamos el Total Pacientes, debemos seleccionar los ultimos registros por cada individuo. Por lo que en las tablas: txt2, txt23,... todas las que continenen el 2, se modifica la bbdd de entrada.
+
 dfiltr_last1 <- d[order(pat_id, tam, -con_date) & status != "ABANDONOS"]
 dfiltr_last1 <- dfiltr_last1[, orden := rleid(con_date), .(pat_id, tam)][orden == 1,]
 dfiltr_last2 <- d[order(pat_id, -con_date) & status == "ABANDONOS"]
 dfiltr_last <- rbind(dfiltr_last1, dfiltr_last2)
 
-# dfiltr <- dfiltr[valores == 1,]
+## <--------------------------->####
+# Relleno de Tablas: ####
 
-## SIN TOTALES
+## Sin totales ####
 for (i in 1:nrow(txt)){
   if(txt[i,2] == "ABANDONOS"){
     # i=1
@@ -268,7 +273,7 @@ for (i in 1:nrow(txt)){
 }
 
 
-### TOTALES INDIVIDUALES ####
+### Totales INDIVIDUALES ####
 ### TOTAL Primera variable
 txt1 <- expand.grid("TOTAL ESP",b,c, e, f)
 for (i in 1:nrow(txt1)){
@@ -281,23 +286,12 @@ for (i in 1:nrow(txt1)){
   }
 }
 
-# d[status == "NUEVO PACIENTE" & recod_prd_name == "REPATHA" & tam == "TRIM" & segmento_final == "H+ECVA", uniqueN(pat_id)]
-# txt1[txt1$Var1 == "NUEVO PACIENTE" & txt1$Var2 == "REPATHA" & txt1$Var4 == "TRIM" & txt1$Var5 == "H+ECVA", ]
-
 
 ### TOTAL Segunda variable
 txt2 <- expand.grid(a,"Total Patients",c, e, f)
 for (i in 1:nrow(txt2)){
   txt2[i,6] <- dfiltr_last[esp == txt2[i,1] & recod_prd_name == txt2[i,3] & tam == txt2[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & segmento_final == txt2[i,5], uniqueN(pat_id)]
 }
-
-# txt2_v <- expand.grid(a,"Total Patients",c, e, f)
-# for (i in 1:nrow(txt2_v)){
-#   txt2_v[i,6] <- dfiltr_last[esp == txt2_v[i,1] & recod_prd_name == txt2_v[i,3] & tam == txt2_v[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & segmento_final == txt2_v[i,5], uniqueN(pat_id)]
-# }
-# 
-# txt_c <- merge(txt2, txt2_v, by = c("Var1", "Var2", "Var3", "Var4", "Var5"), all = T)
-# txt_c <- merge(txt_c, diferencias2, by = c("Var1", "Var2", "Var3", "Var4", "Var5"), all.x = T)
 
 ### TOTAL Tercera variable
 txt3 <- expand.grid(a,b, "TOTAL", e, f)
@@ -324,18 +318,12 @@ for (i in 1:nrow(txt4)){
 }
 
 
-
-
-### TOTALES POR PAREJAS ####
+### Totales por PAREJAS ####
 ### TOTAL Primera y Segunda variable
 txt12 <- expand.grid("TOTAL ESP","Total Patients", c, e, f)
 for (i in 1:nrow(txt12)){
   txt12[i,6] <- dfiltr_last[recod_prd_name == txt12[i,3] & tam == txt12[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & segmento_final == txt12[i,5], uniqueN(pat_id)]
 }
-
-# # dfiltr[recod_prd_name == "NUSTENDI" & tam == "TRIM" & segmento_final == "HF"& !status %in% c("ABANDONOS", "SWITCHES FROM"), uniqueN(pat_id)]
-# vec <- c(18725,     44212,   367314,   528117,  548848,    698005,   140096846)
-# setdiff(dfiltr[recod_prd_name == "NUSTENDI" & tam == "TRIM" & segmento_final == "HF"& !status %in% c("ABANDONOS", "SWITCHES FROM"),]$pat_id,vec)
 
 ### TOTAL Primera y Tercera variable
 txt13 <- expand.grid("TOTAL ESP",b, "TOTAL", e, f)
@@ -393,7 +381,7 @@ for (i in 1:nrow(txt34)){
 
 
 
-### TOTALES POR TRIOS ####
+### Totales pot TRIOS ####
 ### TOTAL Primera Segunda Tercera variable
 
 txt123 <- expand.grid("TOTAL ESP","Total Patients", "TOTAL", e, f)
@@ -427,10 +415,8 @@ for (i in 1:nrow(txt134)){
 
 
 
-### TOTALES POR CUARTETO ####
+### Total por CUARTETO ####
 ### TOTAL Primera Segunda Tercera cuarta variable
-
-
 txt1234 <- expand.grid("TOTAL ESP","Total Patients", "TOTAL", e, "Total indicaciones")
 for (i in 1:nrow(txt1234)){
   txt1234[i,6] <- dfiltr_last[tam == txt1234[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM"), uniqueN(pat_id)]
@@ -438,7 +424,7 @@ for (i in 1:nrow(txt1234)){
 
 
 
-
+## <--------------------------->####
 ### Juntamos LOS RESULTADOS ####
 total_txt <- setDT(Reduce(function(...) rbind(..., fill = T), mget(ls(pattern = "^txt"))))
 
@@ -463,7 +449,7 @@ total_txt[, Concatenado := paste0(Var3,Var4,Var2,Var5,Var1)]
 
 total_txt <- total_txt[,.(Concatenado, Var1,Var2,Var3,Var4,Var5, Contador_r)]
 
-
+## <--------------------------->####
 ## Exportamos los resultados del periodo ####
 write.xlsx(total_txt, paste0(path_output,"Agentes_lipidicos_",format(mes,"%Y%m"),".xlsx"))
 file_name <- paste0("Agentes_lipidicos_",format(mes,"%Y%m"),".xlsx")

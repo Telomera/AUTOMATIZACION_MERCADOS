@@ -51,6 +51,7 @@ nombres_hojas <- nombres_hojas[!toupper(nombres_hojas) %in% "RESULTADOS"]
 path_output <- paste0(path,"output/",format(mes,"%Y%m"),"/")
 ifelse(!dir.exists(path_output), dir.create(path_output), F)
 
+## <--------------------------->####
 ## Leemos los fichero ####
 # list.files(path_input)
 d <- setDT(read.xlsx(paste0(path_input,file_mercado), 
@@ -220,8 +221,9 @@ for (i in 1:nrow(txt)){
   }
 }
 
-
-### TOTALES INDIVIDUALES ####
+## <--------------------------->####
+# Relleno de Tablas: ####
+### Totales INDIVIDUALES ####
 ### TOTAL Primera variable
 txt1 <- expand.grid("TOTAL ESP",b,c, e)
 for (i in 1:nrow(txt1)){
@@ -253,7 +255,7 @@ for (i in 1:nrow(txt3)){
 
 
 
-### TOTALES POR PAREJAS ####
+### Totales por PAREJAS ####
 ### TOTAL Primera y Segunda variable
 txt12 <- expand.grid("TOTAL ESP","Total Patients", c, e)
 for (i in 1:nrow(txt12)){
@@ -279,7 +281,7 @@ for (i in 1:nrow(txt23)){
 
 
 
-### TOTALES POR TRIOS ####
+### Totales por TRIOS ####
 ### TOTAL Primera Segunda Tercera variable
 
 txt123 <- expand.grid("TOTAL ESP","Total Patients", "TOTAL", e)
@@ -288,6 +290,7 @@ for (i in 1:nrow(txt123)){
 }
 
 
+## <--------------------------->####
 ### Juntamos LOS RESULTADOS ####
 total_txt <- setDT(Reduce(function(...) rbind(..., fill = T), mget(ls(pattern = "^txt"))))
 
@@ -311,7 +314,7 @@ total_txt <- total_txt[Var3 != "REPETICION"]
 total_txt[, Concatenado := paste0(Var2, Var3, Var4, Var1)]
 total_txt <- total_txt[,.(Concatenado, Var2,Var3,Var4,Var1, Contador_r)]
 
-
+## <--------------------------->####
 ## Exportamos los resultados del periodo ####
 write.xlsx(total_txt, paste0(path_output,"IPCSK9_",format(mes,"%Y%m"),".xlsx"))
 file_name <- paste0("IPCSK9_",format(mes,"%Y%m"),".xlsx")
