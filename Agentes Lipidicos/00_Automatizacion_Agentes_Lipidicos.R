@@ -464,44 +464,6 @@ total_txt[, Concatenado := paste0(Var3,Var4,Var2,Var5,Var1)]
 total_txt <- total_txt[,.(Concatenado, Var1,Var2,Var3,Var4,Var5, Contador_r)]
 
 
-
-
-
-
-{
-# ## comprobacions 202404
-# require(openxlsx)
-out_previo <- setDT(read.xlsx(paste0(path_input,file_mercado), 
-                              sheet = "Resultados", 
-                              detectDates = T))
-# setnames(out_previo, "Var3Var4Var2Var5Var1", "Concatenado")
-setnames(out_previo, "VALOR", "Contador")
-total_txt[,.N, Var1]
-out_previo[,.N, Var1]
-
-total_txt[,Var4 := toupper(Var4)]
-total_txt[,Concatenado := toupper(Concatenado)]
-out_previo[,Concatenado := toupper(Concatenado)]
-out_previo[,Var4 := toupper(Var4)]
-
-diferencias <- setDT(merge(total_txt[Var1 != "TAMMar23"], 
-                           out_previo, 
-                           by = c("Concatenado","Var1", "Var2", "Var3", "Var4", "Var5"), all = T))
-diferencias[,.N, Var1]
-diferencias <- diferencias[Var5 != "LEQVIO"]
-dif <- diferencias[Contador_r != Contador | is.na(Contador_r) | is.na(Contador)]
-igual <- diferencias[Contador_r == Contador]
-
-dif[, magnitud := abs(Contador-Contador_r)]
-
-}
-
-
-
-
-
-out_previo[,.N, Var4]
-
 ## Exportamos los resultados del periodo ####
 write.xlsx(total_txt, paste0(path_output,"Agentes_lipidicos_",format(mes,"%Y%m"),".xlsx"))
 file_name <- paste0("Agentes_lipidicos_",format(mes,"%Y%m"),".xlsx")
