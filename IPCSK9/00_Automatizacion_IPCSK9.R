@@ -51,10 +51,8 @@ nombres_hojas <- nombres_hojas[!toupper(nombres_hojas) %in% "RESULTADOS"]
 path_output <- paste0(path,"output/",format(mes,"%Y%m"),"/")
 ifelse(!dir.exists(path_output), dir.create(path_output), F)
 
-## Leemos el fichero ####
+## Leemos los fichero ####
 # list.files(path_input)
-## Leemos el fichero ####
-
 d <- setDT(read.xlsx(paste0(path_input,file_mercado), 
                      sheet = nombres_hojas[!grepl("tx|switches", ignore.case = T, nombres_hojas)], 
                      detectDates = T))
@@ -72,18 +70,27 @@ d2 <- setDT(read.xlsx(paste0(path_input,file_mercado),
 names(d) <- tolower(names(d))
 names(d2) <- tolower(names(d2))
 
-
-
-# d <- fread(paste0(path_input,"RX_Mayo24.csv"))
-# 
-# d2 <- fread(paste0(path_input,"RX_Mayo24_SWITCHES.csv"))
-# 
-# names(d) <- tolower(names(d))
-# names(d2) <- tolower(names(d2))
-
 setnames(d2, "mol_name-", "recod_prd-")
 
+
+
+
+if(sum(c("pat_id","esp" , "con_date", "recod_prd" , "mast_prd_name", "recod_prd","tam", "status", "abandono") %in% names(d)) != 9) {
+  stop(paste0("Revisar los nombres del archivo, pestaña: ",nombres_hojas[grepl("tx|switches", ignore.case = T, nombres_hojas)],"\n 
+              deberían ser: pat_id, esp, con_date, recod_prd , mast_prd_name, recod_prd, tam, status, abandono"))
+}
+
+
+if(sum(c("pat_id","esp" , "con_date+","recod_prd-" , "mast_prd_name-", "tam") %in% names(d2)) != 6) {
+  stop(paste0("Revisar los nombres del archivo, pestaña: ",nombres_hojas[grepl("tx|switches", ignore.case = T, nombres_hojas)],"\n 
+              deberían ser: pat_id,esp , con_date+,recod_prd- , mast_prd_name-, tam"))
+  }
+
 temp <- rstudioapi::showQuestion("IPCSK9",paste0("IPCSK9 Mes a ejecutar: ", mes_texto_completo))
+
+
+
+
 
 
 
@@ -197,8 +204,6 @@ d[,.N, esp]
 ## mejor eliminamos los que no tienen TAM que son más
 d <- d[tam != ""]
 
-# d <- d[status != ""]
-
 a <- c(unique(d$esp))
 b <- c(unique(d$status))
 c <- c(unique(d$recod_prd))
@@ -304,21 +309,25 @@ total_txt <- total_txt[Var3 != "REPETICION"]
 total_txt[, Concatenado := paste0(Var2, Var3, Var4, Var1)]
 total_txt <- total_txt[,.(Concatenado, Var2,Var3,Var4,Var1, Contador_r)]
 
+
 {
-# ## comprobacions 202404
-# require(openxlsx)
-# out_previo <- setDT(read.xlsx("IPCSK9/out/out_abril24.xlsx", "Hoja1"))
-# out_previo2 <- setDT(read.xlsx("IPCSK9/Data/Libro1.xlsx", "Hoja1"))  ## output arreglado los abandonos
-# out_previo[, c("X7", "X8", "X9") := NULL]
-# 
-# names(out_previo2) <- names(out_previo)
-# 
-# diferencias <- setDT(merge(total_txt, out_previo2, by = c("Concatenado","Var1", "Var2", "Var3", "Var4"), all = T))
-# 
-# dif <- diferencias[Contador_r != Contador | is.na(Contador_r) | is.na(Contador)]
-# igual <- diferencias[Contador_r == Contador]
+  # ## comprobacions 202404
+  # require(openxlsx)
+  # out_previo <- setDT(read.xlsx("IPCSK9/out/out_abril24.xlsx", "Hoja1"))
+  # out_previo2 <- setDT(read.xlsx("IPCSK9/Data/Libro1.xlsx", "Hoja1"))  ## output arreglado los abandonos
+  # out_previo[, c("X7", "X8", "X9") := NULL]
+  # 
+  # names(out_previo2) <- names(out_previo)
+  # 
+  # diferencias <- setDT(merge(total_txt, out_previo2, by = c("Concatenado","Var1", "Var2", "Var3", "Var4"), all = T))
+  # 
+  # dif <- diferencias[Contador_r != Contador | is.na(Contador_r) | is.na(Contador)]
+  # igual <- diferencias[Contador_r == Contador]
 }
+
 
 ## Exportamos los resultados del periodo ####
 # fwrite(total_txt, paste0(path_output,"IPCSK9_",format(mes,"%Y%m"),".csv"))
 write.xlsx(total_txt, paste0(path_output,"IPCSK9_",format(mes,"%Y%m"),".xlsx"))
+file_name <- paste0("IPCSK9_",format(mes,"%Y%m"),".xlsx")
+if(paste0("IPCSK9_",format(mes,"%Y%m"),".xlsx") %in% list.files(path_output)){cat("Se ha exportado correctamente el archivo:\n",file_name)}else{warning("Hay un problema con la exportación")}
