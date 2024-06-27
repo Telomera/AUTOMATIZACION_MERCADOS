@@ -298,8 +298,13 @@ total_txt[,.N, Var4]
 
 names(total_txt) <- c("Var2", "Var3", "Var4", "Var1", "Contador_r")
 
-# total_txt[Var1 == "TRIM", Var1 := "Feb-Abr24"]
-total_txt[Var1 == "TRIM", Var1 := paste0(mes_texto0,"-",mes_texto,year_extract)]
+{
+  if(mes_texto %in% c("Mar"))  total_txt[Var1 == "TRIM", Var1 := paste0("Q1 ",year_extract_long)]
+  if(mes_texto %in% c("Jun"))  total_txt[Var1 == "TRIM", Var1 := paste0("Q2 ",year_extract_long)]
+  if(mes_texto %in% c("Sep"))  total_txt[Var1 == "TRIM", Var1 := paste0("Q3 ",year_extract_long)]
+  if(mes_texto %in% c("Dic"))  total_txt[Var1 == "TRIM", Var1 := paste0("Q4 ",year_extract_long)]
+  if(!mes_texto %in% c("Mar","Jun","Sep","Dic")) total_txt[Var1 == "TRIM", Var1 := paste0(mes_texto0,"-",mes_texto,year_extract)]
+}
 
 total_txt <- total_txt[Var3 != "REPETICION"]
 
