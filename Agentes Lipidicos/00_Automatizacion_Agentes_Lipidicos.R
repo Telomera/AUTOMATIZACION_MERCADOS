@@ -3,13 +3,6 @@ gc()
 cat("\014")
 options(scipen=999)
 
-
-## PARAMETROS USUARIO EXTERNO ####
-user = "YesikaDíazRodriguez"
-path <- paste0("C:/Users/",user,"/Telomera S.L/AUTOMATIZACION MERCADOS - General/Agentes lipidicos/")
-
-
-
 ### PAQUETES DE R ####
 
 package <- function(x){
@@ -26,7 +19,13 @@ package("rstudioapi")   ## showPrompt
 package("readxl")       ## excel_sheets
 package("openxlsx")     ## para leer el excel
 
+
+
+
+
 ## PARAMETROS ####
+path <- "../Agentes lipidicos/input/"
+
 aux <- as.Date("2024-05-15")
 # aux <- Sys.Date()
 
@@ -327,9 +326,9 @@ for (i in 1:nrow(txt12)){
   txt12[i,6] <- dfiltr[recod_prd_name == txt12[i,3] & tam == txt12[i,4] & !status %in% c("ABANDONOS", "SWITCHES FROM") & segmento_final == txt12[i,5], uniqueN(pat_id)]
 }
 
-# dfiltr[recod_prd_name == "NUSTENDI" & tam == "TRIM" & segmento_final == "HF"& !status %in% c("ABANDONOS", "SWITCHES FROM"), uniqueN(pat_id)]
-vec <- c(18725,     44212,   367314,   528117,  548848,    698005,   140096846)
-setdiff(dfiltr[recod_prd_name == "NUSTENDI" & tam == "TRIM" & segmento_final == "HF"& !status %in% c("ABANDONOS", "SWITCHES FROM"),]$pat_id,vec)
+# # dfiltr[recod_prd_name == "NUSTENDI" & tam == "TRIM" & segmento_final == "HF"& !status %in% c("ABANDONOS", "SWITCHES FROM"), uniqueN(pat_id)]
+# vec <- c(18725,     44212,   367314,   528117,  548848,    698005,   140096846)
+# setdiff(dfiltr[recod_prd_name == "NUSTENDI" & tam == "TRIM" & segmento_final == "HF"& !status %in% c("ABANDONOS", "SWITCHES FROM"),]$pat_id,vec)
 
 ### TOTAL Primera y Tercera variable
 txt13 <- expand.grid("TOTAL ESP",b, "TOTAL", e, f)
@@ -435,13 +434,16 @@ for (i in 1:nrow(txt1234)){
 
 ### Juntamos LOS RESULTADOS ####
 total_txt <- setDT(Reduce(function(...) rbind(..., fill = T), mget(ls(pattern = "^txt"))))
+total_txt2 <-  setDT(rbind(txt2, txt12, txt23, txt24, txt123, txt124, txt234, txt1234, fill = T))
 
 ## quitamos unas filas de NA que se generan y los registros que tienen 0
 total_txt <- total_txt[!is.na(Var1) & V6 > 0,]
+total_txt2 <- total_txt2[!is.na(Var1) & V6 > 0,]
 
 total_txt[,.N, Var4]
 
 names(total_txt) <- c("Var3", "Var4", "Var5", "Var1", "Var2","Contador_r")
+names(total_txt2) <- c("Var3", "Var4", "Var5", "Var1", "Var2","Contador_r")
 
 ## comprobacion
 # total_txt2 <- rbind(txt, txt1, txt2, txt3, txt13,txt23, txt12, txt123)
@@ -455,10 +457,15 @@ names(total_txt) <- c("Var3", "Var4", "Var5", "Var1", "Var2","Contador_r")
 # total_txt[Var1 == "TRIM", Var1 := "Feb-Abr24"]
 total_txt[Var1 == "TRIM", Var1 := paste0(mes_texto0,"-",mes_texto,year_extract)]
 
+total_txt2[Var1 == "TRIM", Var1 := paste0(mes_texto0,"-",mes_texto,year_extract)]
+
 total_txt <- total_txt[!grepl("^REPETICION",Var4)]
+total_txt2 <- total_txt2[!grepl("^REPETICION",Var4)]
 
 total_txt[, Concatenado := paste0(Var3,Var4,Var2,Var5,Var1)]
+total_txt2[, Concatenado := paste0(Var3,Var4,Var2,Var5,Var1)]
 total_txt <- total_txt[,.(Concatenado, Var1,Var2,Var3,Var4,Var5, Contador_r)]
+total_txt2 <- total_txt2[,.(Concatenado, Var1,Var2,Var3,Var4,Var5, Contador_r)]
 
 {
 # ## comprobacions 202404
@@ -469,6 +476,7 @@ out_previo <- setDT(read.xlsx(paste0(path_input,file_mercado),
 
 
 diferencias <- setDT(merge(total_txt, out_previo, by = c("Concatenado","Var1", "Var2", "Var3", "Var4", "Var5"), all = T))
+diferencias2 <- setDT(merge(total_txt2, out_previo, by = c("Concatenado","Var1", "Var2", "Var3", "Var4", "Var5"), all = T))
 diferencias[,.N, Var1]
 diferencias <- diferencias[Var1 %in% c("Feb-Abr24", "TAMAbr24")]
 diferencias <- diferencias[Var5 != "LEQVIO"]
@@ -482,7 +490,7 @@ dif[, magnitud := abs(VALOR-Contador_r)]
 out_previo[,.N, Var4]
 
 ## Exportamos los resultados del periodo ####
-# fwrite(total_txt, paste0(path_output,"IPCSK9_",format(mes,"%Y%m"),".csv"))
+# fwrite(total_txt, paste0(path_output,"Agentes_lipidicos_",format(mes,"%Y%m"),".csv"))
 
 
 
