@@ -312,24 +312,7 @@ total_txt[, Concatenado := paste0(Var2, Var3, Var4, Var1)]
 total_txt <- total_txt[,.(Concatenado, Var2,Var3,Var4,Var1, Contador_r)]
 
 
-{
-  # ## comprobacions 202404
-  # require(openxlsx)
-  # out_previo <- setDT(read.xlsx("IPCSK9/out/out_abril24.xlsx", "Hoja1"))
-  # out_previo2 <- setDT(read.xlsx("IPCSK9/Data/Libro1.xlsx", "Hoja1"))  ## output arreglado los abandonos
-  # out_previo[, c("X7", "X8", "X9") := NULL]
-  # 
-  # names(out_previo2) <- names(out_previo)
-  # 
-  # diferencias <- setDT(merge(total_txt, out_previo2, by = c("Concatenado","Var1", "Var2", "Var3", "Var4"), all = T))
-  # 
-  # dif <- diferencias[Contador_r != Contador | is.na(Contador_r) | is.na(Contador)]
-  # igual <- diferencias[Contador_r == Contador]
-}
-
-
 ## Exportamos los resultados del periodo ####
-# fwrite(total_txt, paste0(path_output,"IPCSK9_",format(mes,"%Y%m"),".csv"))
 write.xlsx(total_txt, paste0(path_output,"IPCSK9_",format(mes,"%Y%m"),".xlsx"))
 file_name <- paste0("IPCSK9_",format(mes,"%Y%m"),".xlsx")
 if(paste0("IPCSK9_",format(mes,"%Y%m"),".xlsx") %in% list.files(path_output)){cat("Se ha exportado correctamente el archivo:\n",file_name)}else{warning("Hay un problema con la exportación")}
