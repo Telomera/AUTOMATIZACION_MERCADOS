@@ -4,12 +4,6 @@ cat("\014")
 options(scipen=999)
 
 
-## PARAMETROS USUARIO EXTERNO ####
-user = "YesikaDíazRodriguez"
-path <- paste0("C:/Users/",user,"/Telomera S.L/AUTOMATIZACION MERCADOS - General/IPCSK9/")
-
-
-
 ### PAQUETES DE R ####
 
 package <- function(x){
@@ -23,9 +17,12 @@ package("data.table")
 package("lubridate")    ## para restar meses cómodamente
 package("stringr")      ## para poder poner los formatos de meses correspondientes
 package("rstudioapi")   ## showPrompt
+package("readxl")       ## excel_sheets
+package("openxlsx")     ## para leer el excel
 
 
 ## PARAMETROS ####
+path <- "../IPCSK9/"
 mes <- as.Date(paste0(year(Sys.Date()), "-", format(Sys.Date() %m-% months(1), "%m"),"-01"))
 mes_actual <- as.Date(paste0(year(Sys.Date()), "-", format(Sys.Date(), "%m"),"-01"))
 
@@ -41,7 +38,12 @@ year_extract <- format(mes,"%y")
 
 ## RUTAS ####
 path_input <- paste0(path,"input/",format(mes,"%Y%m"),"/")
-list.files(path_input)
+file_mercado <- list.files(path_input)[grepl(".xlsx",list.files(path_input))]
+
+if(length(file_mercado) != 1) stop("Revisar los documentos de entrada. Deberían haber solo 1 documento")
+
+(nombres_hojas <- excel_sheets(paste0(path,"Input/",format(mes,"%Y%m"),"/",file_mercado)))
+nombres_hojas <- nombres_hojas[!toupper(nombres_hojas) %in% "RESULTADOS"]
 
 
 ## creamos la carpeta en caso de que no exista
@@ -51,14 +53,33 @@ ifelse(!dir.exists(path_output), dir.create(path_output), F)
 
 ## Leemos el fichero ####
 # list.files(path_input)
+## Leemos el fichero ####
+
+d <- setDT(read.xlsx(paste0(path_input,file_mercado), 
+                     sheet = nombres_hojas[!grepl("tx|switches", ignore.case = T, nombres_hojas)], 
+                     detectDates = T))
+d_raw <- setDT(read.xlsx(paste0(path_input,file_mercado), 
+                         sheet = nombres_hojas[!grepl("tx|switches", ignore.case = T, nombres_hojas)], 
+                         detectDates = T))
 
 
-d <- fread(paste0(path_input,"RX_Mayo24.csv"))
+## siempre tiene TX en el nombre
+d2 <- setDT(read.xlsx(paste0(path_input,file_mercado), 
+                      sheet = nombres_hojas[grepl("tx|switches", ignore.case = T, nombres_hojas)], 
+                      detectDates = T))
 
-d2 <- fread(paste0(path_input,"RX_Mayo24_SWITCHES.csv"))
 
 names(d) <- tolower(names(d))
 names(d2) <- tolower(names(d2))
+
+
+
+# d <- fread(paste0(path_input,"RX_Mayo24.csv"))
+# 
+# d2 <- fread(paste0(path_input,"RX_Mayo24_SWITCHES.csv"))
+# 
+# names(d) <- tolower(names(d))
+# names(d2) <- tolower(names(d2))
 
 setnames(d2, "mol_name-", "recod_prd-")
 
@@ -72,29 +93,10 @@ d2 <- d2[,.(pat_id, esp, con_date = `con_date+`, mast_prd_name = `mast_prd_name-
 
 d <- rbind(d, d2, fill = T)
 
-## Arreglamos fechas para poder hacer filtros
-
-d[, con_date := as.Date(as.character(con_date), "%d/%m/%Y")]
-d[, con_date_end := as.Date(as.character(con_date_end), "%d/%m/%Y")]
 
 if(d[is.na(con_date),.N] > 0){warning(paste0("Tenemos ",d[is.na(con_date),.N]," registros sin fecha 'con_date'"))}
 max(d$con_date)
-if(format(max(d$con_date),"%b") != format(mes_actual-1,"%b")) stop("Los datos no corresponden con el mes indicado.")
-
-
-# d_raw[TAM == "TAMAbr24", uniqueN(pat_id) ]
-# vec1 <- d[con_date >= as.Date("2023-05-01") & con_date < as.Date("2024-05-01"), pat_id]
-# d[con_date >= as.Date("2023-05-01") & con_date < as.Date("2024-05-01"), uniqueN(pat_id)]
-# 
-# 
-# vec2 <- d[tam == "TAMAbr24", pat_id]
-# d[tam == "TAMAbr24", uniqueN(pat_id)]
-# 
-# setdiff(vec1, vec2)
-# setdiff(vec2, vec1)
-# # summary(d[tam == "TAMAbr24"]$con_date)
-
-
+if(format(max(d$con_date, na.rm = T),"%b") != format(mes_actual-1,"%b")) stop("Los datos no corresponden con el mes indicado.")
 
 
 ## ABANDONO ####
@@ -119,7 +121,7 @@ if(min(as.numeric(d$abandono), na.rm = T) != "Inf"){
 }
 
 d[abandono != "",.N, abandono]
-summary(d$abandono)
+# summary(d$abandono)   ## comprobación
 
 aban0 <- d[abandono >= trim & abandono < mes_actual]  ## abandono trim
 aban0[, `:=` (con_date = as.Date("1999-01-01"), status = "ABANDONO", tam = "TRIM")]
@@ -294,15 +296,6 @@ total_txt[,.N, Var4]
 
 names(total_txt) <- c("Var2", "Var3", "Var4", "Var1", "Contador_r")
 
-## comprobacion
-# total_txt2 <- rbind(txt, txt1, txt2, txt3, txt13,txt23, txt12, txt123)
-# total_txt
-# 
-# 
-# diferencias <- setDT(merge(total_txt, total_txt2, by = c("Var1", "Var2", "Var3", "Var4"), suffixes = c("reduce", "rbind"), all = T))
-# diferencias[is.na(V5rbind)]
-# diferencias[V5rbind != V5reduce]
-
 # total_txt[Var1 == "TRIM", Var1 := "Feb-Abr24"]
 total_txt[Var1 == "TRIM", Var1 := paste0(mes_texto0,"-",mes_texto,year_extract)]
 
@@ -327,4 +320,5 @@ total_txt <- total_txt[,.(Concatenado, Var2,Var3,Var4,Var1, Contador_r)]
 }
 
 ## Exportamos los resultados del periodo ####
-fwrite(total_txt, paste0(path_output,"IPCSK9_",format(mes,"%Y%m"),".csv"))
+# fwrite(total_txt, paste0(path_output,"IPCSK9_",format(mes,"%Y%m"),".csv"))
+write.xlsx(total_txt, paste0(path_output,"IPCSK9_",format(mes,"%Y%m"),".xlsx"))
