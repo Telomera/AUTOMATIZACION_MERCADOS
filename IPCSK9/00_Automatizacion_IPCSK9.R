@@ -75,9 +75,9 @@ setnames(d2, "mol_name-", "recod_prd-")
 
 
 
-if(sum(c("pat_id","esp" , "con_date", "recod_prd" , "mast_prd_name", "recod_prd","tam", "status", "abandono") %in% names(d)) != 9) {
+if(sum(c("pat_id","esp" , "con_date",  "mast_prd_name", "recod_prd","tam", "status", "abandono") %in% names(d)) != 8) {
   stop(paste0("Revisar los nombres del archivo, pestaña: ",nombres_hojas[grepl("tx|switches", ignore.case = T, nombres_hojas)],"\n 
-              deberían ser: pat_id, esp, con_date, recod_prd , mast_prd_name, recod_prd, tam, status, abandono"))
+              deberían ser: pat_id, esp, con_date, mast_prd_name, recod_prd, tam, status, abandono"))
 }
 
 
@@ -86,12 +86,9 @@ if(sum(c("pat_id","esp" , "con_date+","recod_prd-" , "mast_prd_name-", "tam") %i
               deberían ser: pat_id,esp , con_date+,recod_prd- , mast_prd_name-, tam"))
   }
 
+
+
 temp <- rstudioapi::showQuestion("IPCSK9",paste0("IPCSK9 Mes a ejecutar: ", mes_texto_completo))
-
-
-
-
-
 
 
 ## añadimos los switchs FROM
